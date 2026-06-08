@@ -1,0 +1,126 @@
+﻿Healthcare Operations Analytics: Multi-Facility Provider Utilization and Contract Performance Engine
+Executive Summary
+This project demonstrates an enterprise-grade healthcare operations analytics workflow designed to monitor, evaluate, and optimize clinical resource allocation across multiple medical facilities. By processing raw Electronic Health Record (EHR) transaction logs and provider scheduling metadata, this engine surfaces critical bottlenecks in clinician utilization, maps productivity against contract benchmarks, and delivers high-fidelity business intelligence to health system executives.
+The Business Challenge
+Healthcare networks frequently suffer from resource imbalances—certain clinics face severe provider burnout and patient scheduling bottlenecks, while others operate under capacity.
+Analytical Objectives: * Quantify Utilization: Calculate exact active patient-facing hours against scheduled shift durations. * Identify Performance Gaps: Flag clinics falling below target utilization metrics. * Streamline Reporting: Construct a scalable SQL data engine capable of transforming raw transactional EHR records into clear, executive-ready metrics.
+Data Architecture & Schema
+To solve this, we simulate a relational healthcare database containing three core operational tables: 1. provider_registry: Metadata for clinicians. 2. facility_shifts: Logged shift durations and locations. 3. encounter_logs: Transactional EHR data tracking individual patient visits.
+Data Architecture & Schema
+To solve this, we simulate a relational healthcare database containing three core operational tables: 1. provider_registry: Metadata for clinicians. 2. facility_shifts: Logged shift durations and locations. 3. encounter_logs: Transactional EHR data tracking individual patient visits.
+SQL Analysis: Evaluating Clinician Utilization Rates
+To calculate provider utilization, our SQL engine must aggregate total patient-facing clinical minutes from individual transactional encounters, convert those minutes into hours, and join that data back against scheduled facility shift hours and provider registries.
+We use a Common Table Expression (CTE) to pre-aggregate the transactional EHR logs before evaluating final facility-level performance.
+# 1. Load Required Libraries
+library(DBI)
+library(RSQLite)
+library(tidyverse)
+
+
+set.seed(1995)
+
+
+# 2. Build the Simulated Datasets
+providers <- tibble(
+  provider_id = 101:115,
+  provider_name = paste("Dr.", c("Smith", "Jones", "Davis", "Wilson", "Taylor", "Thomas", "White", "Harris", "Martin", "Clark", "Lewis", "Robinson", "Walker", "Young", "Allen")),
+  specialty = sample(c("Family Medicine", "Pediatrics", "Internal Medicine", "Urgent Care"), 15, replace = TRUE),
+  contracted_hours_per_week = sample(c(32, 40), 15, replace = TRUE, prob = c(0.3, 0.7))
+)
+shifts <- tibble( shift_id = 5001:5150, provider_id = sample(101:115, 150, replace = TRUE), facility_location = sample(c(“Mankato Main Hospital”, “North Mankato Clinic”, “St. Cloud Urgent Care”), 150, replace = TRUE), shift_date = as.Date(“2026-05-01”) + sample(0:30, 150, replace = TRUE), scheduled_hours = sample(c(8, 10, 12), 150, replace = TRUE, prob = c(0.5, 0.3, 0.2)) )
+
+
+encounters <- tibble(
+  encounter_id = 100001:101200,
+  shift_id = sample(5001:5150, 1200, replace = TRUE),
+  patient_id = sample(20001:25000, 1200, replace = TRUE),
+  encounter_duration_minutes = round(rnorm(1200, mean = 28, sd = 8)),
+  billing_code = sample(c("99213", "99214", "99215", "99203", "99204"), 1200, replace = TRUE, prob = c(0.4, 0.3, 0.1, 0.1, 0.1))
+) %>% 
+  mutate(encounter_duration_minutes = ifelse(encounter_duration_minutes < 5, 5, encounter_duration_minutes))
+
+
+# 3. Create the Database Connection
+con <- dbConnect(RSQLite::SQLite(), ":memory:")
+dbWriteTable(con, "provider_registry", providers, overwrite = TRUE)
+dbWriteTable(con, "facility_shifts", shifts, overwrite = TRUE)
+dbWriteTable(con, "encounter_logs", encounters, overwrite = TRUE)
+
+
+# 4. Immediately Run the SQL Query Engine
+utilization_data <- dbGetQuery(con, "
+  WITH Performance_CTE AS (
+      SELECT 
+          s.facility_location,
+          p.provider_name,
+          p.specialty,
+          s.scheduled_hours,
+          ROUND(SUM(e.encounter_duration_minutes) / 60.0, 2) AS total_patient_hours
+      FROM facility_shifts s
+      JOIN provider_registry p ON s.provider_id = p.provider_id
+      JOIN encounter_logs e ON s.shift_id = e.shift_id
+      GROUP BY s.shift_id
+  )
+  SELECT 
+      facility_location,
+      provider_name,
+      specialty,
+      SUM(scheduled_hours) AS total_scheduled_hours,
+      SUM(total_patient_hours) AS total_clinical_hours,
+      ROUND((SUM(total_patient_hours) / SUM(scheduled_hours)) * 100, 1) AS utilization_rate_pct
+  FROM Performance_CTE
+  GROUP BY facility_location, provider_name
+  ORDER BY facility_location, utilization_rate_pct DESC;
+")
+5. Output the Clean Markdown Table
+knitr::kable(utilization_data) encounters <- tibble( encounter_id = 100001:101200, shift_id = sample(5001:5150, 1200, replace = TRUE), patient_id = sample(20001:25000, 1200, replace = TRUE), encounter_duration_minutes = round(rnorm(1200, mean = 28, sd = 8)), billing_code = sample(c(“99213”, “99214”, “99215”, “99203”, “99204”), 1200, replace = TRUE, prob = c(0.4, 0.3, 0.1, 0.1, 0.1)) ) %>% mutate(encounter_duration_minutes = ifelse(encounter_duration_minutes < 5, 5, encounter_duration_minutes))
+3. Create the Database Connection
+con <- dbConnect(RSQLite::SQLite(), “:memory:”) dbWriteTable(con, “provider_registry”, providers, overwrite = TRUE) dbWriteTable(con, “facility_shifts”, shifts, overwrite = TRUE) dbWriteTable(con, “encounter_logs”, encounters, overwrite = TRUE)
+4. Immediately Run the SQL Query Engine
+utilization_data <- db Get Query(con, ” WITH Performance_CTE AS ( SELECT s.facility_location, p.provider_name, p.specialty, s.scheduled_hours, ROUND(SUM(e.encounter_duration_minutes) / 60.0, 2) AS total_patient_hours FROM facility_shifts s JOIN provider_registry p ON s.provider_id = p.provider_id JOIN encounter_logs e ON s.shift_id = e.shift_id GROUP BY s.shift_id ) SELECT facility_location, provider_name, specialty, SUM(scheduled_hours) AS total_scheduled_hours, SUM(total_patient_hours) AS total_clinical_hours, ROUND((SUM(total_patient_hours) / SUM(scheduled_hours)) * 100, 1) AS utilization_rate_pct FROM Performance_CTE GROUP BY facility_location, provider_name ORDER BY facility_location, utilization_rate_pct DESC; “)
+5. Output the Clean Markdown Table
+knitr::kable(utilization_data) knitr::kable(utilization_data)
+theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(color = "darkgray"),
+    panel.grid.minor = element_blank()
+  )
+<theme> List of 3
+ $ panel.grid.minor: <ggplot2::element_blank>
+ $ plot.title      : <ggplot2::element_text>
+  ..@ family       : NULL
+  ..@ face         : chr "bold"
+  ..@ italic       : chr NA
+  ..@ fontweight   : num NA
+  ..@ fontwidth    : num NA
+  ..@ colour       : NULL
+  ..@ size         : num 14
+  ..@ hjust        : NULL
+  ..@ vjust        : NULL
+  ..@ angle        : NULL
+  ..@ lineheight   : NULL
+  ..@ margin       : NULL
+  ..@ debug        : NULL
+  ..@ inherit.blank: logi FALSE
+ $ plot.subtitle   : <ggplot2::element_text>
+  ..@ family       : NULL
+  ..@ face         : NULL
+  ..@ italic       : chr NA
+  ..@ fontweight   : num NA
+  ..@ fontwidth    : num NA
+  ..@ colour       : chr "darkgray"
+  ..@ size         : NULL
+  ..@ hjust        : NULL
+  ..@ vjust        : NULL
+  ..@ angle        : NULL
+  ..@ lineheight   : NULL
+  ..@ margin       : NULL
+  ..@ debug        : NULL
+  ..@ inherit.blank: logi FALSE
+ @ complete: logi FALSE
+ @ validate: logi TRUE
+#```{r} #| label: visual-rendering #| message: false #| warning: false #| echo: true
+Calculate facility-level averages for the chart
+facility_summary <- utilization_data %>% group_by(facility_location) %>% summarize(avg_utilization = mean(utilization_rate_pct))
+Create an executive-ready bar chart
+ggplot(facility_summary, aes(x = reorder(facility_location, avg_utilization), y = avg_utilization, fill = facility_location)) + geom_bar(stat = “identity”, width = 0.5, show.legend = FALSE) + geom_hline(yintercept = 80, linetype = “dashed”, color = “red”, size = 0.8) + # ADJUSTED: Repositioned text safely above the bars and aligned to the line’s left edge annotate(“text”, x = 3.4, y = 78, label = “Target Maximum Efficiency (80%)”, color = “red”, fontface = “bold”, hjust = 1) + coord_flip() + scale_fill_brewer(palette = “Blues”) + labs( title = “Average Provider Utilization Rate by Facility Location”, subtitle = “Analysis of EHR Transaction Logs & Schedule Metadata (May 2026)”, x = “Facility Location”, y = “Average Utilization Rate (%)”, caption = “Data Source: Simulated EHR Encounter Logs” ) + theme_minimal(base_size = 12) + theme( plot.title = element_text(face = “bold”, size = 14), plot.subtitle = element_text(color = “darkgray”), panel.grid.minor = element_blank() ) ```
