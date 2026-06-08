@@ -1,0 +1,17 @@
+Package: HealthcareOperationsAnalytics
+Title: Multi-Facility Provider Utilization and Contract Performance Engine
+Version: 1.0.0
+Authors@R: person("Owar", "Omot", role = c("aut", "cre"))
+Description: An end-to-end data engineering pipeline and operations dashboard 
+    built to process high-velocity EHR transaction logs and schedule metadata 
+    using SQLite and R tidyverse components.
+Depends:
+    R (>= 4.0.0)
+Imports:
+    DBI,
+    RSQLite,
+    tidyverse,
+    knitr
+License: MIT
+Encoding: UTF-8
+LazyData: true
