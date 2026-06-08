@@ -1,0 +1,15 @@
+# R history and workspace files
+.Rhistory
+.RData
+.Ruserdata
+
+# Quarto and RMarkdown compilation files
+/.rstudio_packages
+/.quarto/
+/*_files/
+/*_cache/
+.html
+
+# Operating system files
+.DS_Store
+Thumbs.db
